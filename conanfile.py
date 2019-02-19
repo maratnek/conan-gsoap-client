@@ -17,8 +17,47 @@ class GSoapConan(ConanFile):
     default_options = "shared=False"
     generators = "cmake"
 
-    # def create_soap_lib():
-        # print("Create soap lib funciton")
+    def create_soap_lib(self):
+        print("Create soap lib funciton")
+        self.run("dir")
+        path = "./gsoap/gsoap/bin/win32/"
+        extension = ".exe"
+        option_wsdl = " -c++11 -o witsml.h http://witsml.tpu.ru/service/wmls.asmx?WSDL";
+        with tools.chdir(path):
+            self.run("dir")
+            self.run("wsdl2h" + extension + option_wsdl)
+            mkdir("source")
+            self.run("dir")
+            shutil.copy("witsml.h", "./source")
+            shutil.copy("../../stdsoap2.cpp ../../stdsoap2.h",  "./source")
+            #soap2cpp create all files the client soap
+            option_soap = " -1 -i -j -b -c++11 -g -r -T -t -C -I../../import witsml.h -d source -e -x";
+            self.run("soapcpp2" + extension + option_soap)
+            # Need to create CMakeLists
+            with tools.chdir("./source"):
+                # shutil.copy(self.current_path + "CMakeLists.txt", ".")
+                f = open("./CMakeLists.txt", "w")
+                # contents = f.readlines()
+                self.run("dir")
+                contents =  """
+                    cmake_minimum_required(VERSION 3.10)
+                    project(soap_wsdl_schema)
+                    set(CMAKE_CXX_FLAGS "-DWITH_NO_C_LOCALE")
+                    file(GLOB_RECURSE SOAP_WSDL_SOURCE
+                       "*.h"
+                       "*.nsmap"
+                       "*.cpp")
+                    message(STATUS -- ${SOAP_WSDL_SOURCE})
+                    add_library(${PROJECT_NAME} STATIC ${SOAP_WSDL_SOURCE})
+                 """
+                f.write(contents)
+                f.close()
+                self.run("dir")
+                mkdir("build")
+
+                cmake = CMake(self)
+                cmake.configure(source_folder=path + "/source", build_folder=self.build_folder)
+                cmake.build()
 
     # def configure_cmake(self):
     #     cmake = CMake(self)
@@ -38,8 +77,7 @@ class GSoapConan(ConanFile):
         print("****************************execute source*******************************")
         print("*************************************************************************")
 
-        # create_soap_lib()
-
+        self.create_soap_lib()
 
         zip_name = self.name + "_" + self.version + ".zip"
         download("https://artifacts.devogip.ru/artifactory/gm-public/" + zip_name, zip_name)
@@ -59,45 +97,7 @@ class GSoapConan(ConanFile):
         print(platform.system())
         if platform.system() == "Windows":
             print("windows")
-            self.run("dir")
-            path = "./gsoap/gsoap/bin/win32/"
-            extension = ".exe"
-            option_wsdl = " -c++11 -o witsml.h http://witsml.tpu.ru/service/wmls.asmx?WSDL";
-            with tools.chdir(path):
-                self.run("dir")
-                self.run("wsdl2h" + extension + option_wsdl)
-                mkdir("source")
-                self.run("dir")
-                shutil.copy("witsml.h", "./source")
-                shutil.copy("../../stdsoap2.cpp ../../stdsoap2.h",  "./source")
-                #soap2cpp create all files the client soap
-                option_soap = " -1 -i -j -b -c++11 -g -r -T -t -C -I../../import witsml.h -d source -e -x";
-                self.run("soapcpp2" + extension + option_soap)
-                # Need to create CMakeLists
-                with tools.chdir("./source"):
-                    # shutil.copy(self.current_path + "CMakeLists.txt", ".")
-                    f = open("./CMakeLists.txt", "w")
-                    # contents = f.readlines()
-                    self.run("dir")
-                    contents =  """
-                        cmake_minimum_required(VERSION 3.10)
-                        project(soap_wsdl_schema)
-                        set(CMAKE_CXX_FLAGS "-DWITH_NO_C_LOCALE")
-                        file(GLOB_RECURSE SOAP_WSDL_SOURCE
-                           "*.h"
-                           "*.nsmap"
-                           "*.cpp")
-                        message(STATUS -- ${SOAP_WSDL_SOURCE})
-                        add_library(${PROJECT_NAME} STATIC ${SOAP_WSDL_SOURCE})
-                     """
-                    f.write(contents)
-                    f.close()
-                    self.run("dir")
-                    mkdir("build")
-
-                    cmake = CMake(self)
-                    cmake.configure(source_folder=path + "/source", build_folder=self.build_folder)
-                    cmake.build()
+            self.create_soap_lib();
                     # cmake = CMake(self)
                     # print(self.source_folder)
                     # print(cmake.command_line)
