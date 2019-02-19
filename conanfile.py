@@ -17,17 +17,14 @@ class GSoapConan(ConanFile):
     default_options = "shared=False"
     generators = "cmake"
 
-    def create_soap_lib(self):
+    def create_soap_lib(self, path, ext=""):
         print("Create soap lib funciton")
-        self.run("dir")
-        path = "./gsoap/gsoap/bin/win32/"
-        extension = ".exe"
+        # path =
+        extension = ext
         option_wsdl = " -c++11 -o witsml.h http://witsml.tpu.ru/service/wmls.asmx?WSDL";
         with tools.chdir(path):
-            self.run("dir")
             self.run("wsdl2h" + extension + option_wsdl)
             mkdir("source")
-            self.run("dir")
             shutil.copy("witsml.h", "./source")
             shutil.copy("../../stdsoap2.cpp ../../stdsoap2.h",  "./source")
             #soap2cpp create all files the client soap
@@ -35,10 +32,7 @@ class GSoapConan(ConanFile):
             self.run("soapcpp2" + extension + option_soap)
             # Need to create CMakeLists
             with tools.chdir("./source"):
-                # shutil.copy(self.current_path + "CMakeLists.txt", ".")
                 f = open("./CMakeLists.txt", "w")
-                # contents = f.readlines()
-                self.run("dir")
                 contents =  """
                     cmake_minimum_required(VERSION 3.10)
                     project(soap_wsdl_schema)
@@ -52,9 +46,8 @@ class GSoapConan(ConanFile):
                  """
                 f.write(contents)
                 f.close()
-                self.run("dir")
                 mkdir("build")
-
+                # Cmake configure and build
                 cmake = CMake(self)
                 cmake.configure(source_folder=path + "/source", build_folder=self.build_folder)
                 cmake.build()
@@ -77,8 +70,6 @@ class GSoapConan(ConanFile):
         print("****************************execute source*******************************")
         print("*************************************************************************")
 
-        self.create_soap_lib()
-
         zip_name = self.name + "_" + self.version + ".zip"
         download("https://artifacts.devogip.ru/artifactory/gm-public/" + zip_name, zip_name)
         unzip(zip_name)
@@ -97,21 +88,13 @@ class GSoapConan(ConanFile):
         print(platform.system())
         if platform.system() == "Windows":
             print("windows")
-            self.create_soap_lib();
-                    # cmake = CMake(self)
-                    # print(self.source_folder)
-                    # print(cmake.command_line)
-                    # print(cmake.build_config)
-                    # self.run('cmake . ')
-                    # self.run('cmake --build . ')
-                    # self.run('cmake --build . --target install')
+            self.create_soap_lib("./gsoap/gsoap/bin/win32/", ".exe");
 
         else: # Linux System
             self.run("ls")
             path_wsdl = "./gsoap/gsoap/wsdl/wsdl2h";
             path_soap = "./gsoap/gsoap/src/soapstd2";
             with tools.chdir("./gsoap"):
-                self.run("ls")
                 env_build = AutoToolsBuildEnvironment(self, True)
                 with tools.environment_append(env_build.vars):
                     self.run("chmod +x ./configure")
@@ -120,12 +103,10 @@ class GSoapConan(ConanFile):
                     self.run("make")
                 with tools.chdir("./gsoap/bin"):
                     mkdir("linux")
-                    print('directory')
                     self.run("pwd")
-                    self.run("ls")
                     shutil.copy("../wsdl/wsdl2h", "linux")
                     shutil.copy("../src/soapcpp2", "linux")
-                    self.run("ls")
+            self.create_soap_lib("./gsoap/gsoap/bin/linux/");
 
         # create_soap_lib()
         print("end build conan")
